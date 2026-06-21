@@ -320,6 +320,29 @@ const updateResume = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, user, 'Resume Uploaded Successfully'));
 });
+const updateSkill = asyncHandler(async (req, res) => {
+  const { skill } = req.body;
+  if (!skill || skill.trim === '') {
+    throw new ApiError(400, 'Skill is required');
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $addToSet: {
+        skills: skill.trim(),
+      },
+    },
+    {
+      new: true,
+    },
+  ).select('-password -refreshToken');
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Skill Added Successfully'));
+});
 
 export {
   registerUser,
@@ -332,4 +355,5 @@ export {
   changeUserAvatar,
   changeUserCoverImage,
   updateResume,
+  updateSkill,
 };
