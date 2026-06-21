@@ -209,6 +209,118 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, req.user, 'Current User Fetched Successfully'));
 });
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullName, bio, headline } = req.body;
+  if (!fullName && headline === undefined && bio === undefined) {
+    throw new ApiError(400, 'At least one field is required');
+  }
+
+  const updateFields = {};
+  if (fullName) updateFields.fullName = fullName.trim();
+  if (bio !== undefined) updateFields.bio = bio.trim();
+  if (headline !== undefined) updateFields.headline = headline.trim();
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: updateFields,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  ).select('-password -refreshToken');
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Accound Details Changed Successfully'));
+});
+const changeUserAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path;
+  if (!avatarLocalPath) {
+    console.log('no avatar');
+    throw new ApiError(400, 'Avatar image is required');
+  }
+
+  const avatar = await uploadOnCloudinary(avatarLocalPath);
+  if (!avatar.url) {
+    throw new ApiError(400, 'Avatar Upload failed');
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        avatar: avatar.url,
+      },
+    },
+    {
+      new: true,
+    },
+  ).select('-password -refreshToken');
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Avatar Change Successfully'));
+});
+const changeUserCoverImage = asyncHandler(async (req, res) => {
+  const coverImageLocalPath = req.file?.path;
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, 'coverImage image is required');
+  }
+
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+  if (!coverImage.url) {
+    throw new ApiError(400, 'Cover Image Upload failed');
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        coverImage: coverImage.url,
+      },
+    },
+    {
+      new: true,
+    },
+  ).select('-password -refreshToken');
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Cover Image Change Successfully'));
+});
+
+const updateResume = asyncHandler(async (req, res) => {
+  const resumeLocalPath = req.file?.path;
+  if (!resumeLocalPath) {
+    throw new ApiError(400, 'Resume required');
+  }
+
+  if (req.file.mimetype !== 'application/pdf') {
+    throw new ApiError(400, 'Only pdf files are allowed.');
+  }
+  const resume = await uploadOnCloudinary(resumeLocalPath);
+  if (!resume.url) {
+    throw new ApiError(500, 'Resume upload failed');
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        resume: resume.url,
+      },
+    },
+    {
+      new: true,
+    },
+  ).select('-password -refreshToken');
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Resume Uploaded Successfully'));
+});
+
 export {
   registerUser,
   loginUser,
@@ -216,4 +328,8 @@ export {
   refreshAccessToken,
   changePassword,
   getCurrentUser,
+  updateAccountDetails,
+  changeUserAvatar,
+  changeUserCoverImage,
+  updateResume,
 };
