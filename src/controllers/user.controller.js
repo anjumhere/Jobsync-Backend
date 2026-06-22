@@ -343,6 +343,28 @@ const updateSkill = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, user, 'Skill Added Successfully'));
 });
+const removeSkill = asyncHandler(async (req, res) => {
+  const { skill } = req.params;
+  if (!skill || skill.trim() === '') {
+    throw new ApiError(400, 'Skill is required');
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $pull: {
+        skills: skill.trim(),
+      },
+    },
+    {
+      new: true,
+    },
+  ).select('-password -refreshToken');
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Skill Removed Successfully'));
+});
 
 export {
   registerUser,
@@ -356,4 +378,5 @@ export {
   changeUserCoverImage,
   updateResume,
   updateSkill,
+  removeSkill,
 };

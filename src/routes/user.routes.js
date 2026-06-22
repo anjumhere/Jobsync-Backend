@@ -7,6 +7,12 @@ import {
   refreshAccessToken,
   changePassword,
   getCurrentUser,
+  updateAccountDetails,
+  changeUserAvatar,
+  changeUserCoverImage,
+  updateResume,
+  updateSkill,
+  removeSkill,
 } from '../controllers/user.controller.js';
 import { verifyJWT } from '../middleware/auth.middleware.js';
 
@@ -30,4 +36,14 @@ router.route('/logout').post(verifyJWT, logoutUser);
 router.route('/refresh-token').post(verifyJWT, refreshAccessToken);
 router.route('/change-password').post(verifyJWT, changePassword);
 router.route('/current-user').get(verifyJWT, getCurrentUser);
+router.route('/update-account').patch(verifyJWT, updateAccountDetails);
+router
+  .route('/avatar')
+  .patch(verifyJWT, upload.single('avatar'), changeUserAvatar);
+router
+  .route('/cover-image')
+  .patch(verifyJWT, upload.single('coverImage'), changeUserCoverImage);
+router.route('/resume').patch(verifyJWT, upload.single('resume'), updateResume);
+router.route('/skills').post(verifyJWT, updateSkill);
+router.route('/skills/:skill').delete(verifyJWT, removeSkill);
 export default router;
