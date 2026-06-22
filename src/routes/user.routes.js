@@ -13,6 +13,9 @@ import {
   updateResume,
   updateSkill,
   removeSkill,
+  bookMarkJob,
+  removeBookmarkedJob,
+  getSavedJobs,
 } from '../controllers/user.controller.js';
 import { verifyJWT } from '../middleware/auth.middleware.js';
 
@@ -46,4 +49,7 @@ router
 router.route('/resume').patch(verifyJWT, upload.single('resume'), updateResume);
 router.route('/skills').post(verifyJWT, updateSkill);
 router.route('/skills/:skill').delete(verifyJWT, removeSkill);
+router.route('/saved-jobs/:jobId').post(verifyJWT, bookMarkJob);
+router.route('/saved-jobs/:jobId').delete(verifyJWT, removeBookmarkedJob);
+router.route('/saved-jobs').get(verifyJWT, getSavedJobs);
 export default router;

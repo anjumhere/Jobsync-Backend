@@ -1,3 +1,4 @@
+import { Job } from '../models/job.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
@@ -322,7 +323,7 @@ const updateResume = asyncHandler(async (req, res) => {
 });
 const updateSkill = asyncHandler(async (req, res) => {
   const { skill } = req.body;
-  if (!skill || skill.trim === '') {
+  if (!skill || skill.trim() === '') {
     throw new ApiError(400, 'Skill is required');
   }
   const user = await User.findByIdAndUpdate(
@@ -366,6 +367,67 @@ const removeSkill = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, 'Skill Removed Successfully'));
 });
 
+const bookMarkJob = asyncHandler(async (req, res) => {
+  const { jobId } = req.params;
+  if (!jobId || jobId.trim() === '') {
+    throw new ApiError(400, 'Job Id  is required');
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $addToSet: {
+        savedJobs: jobId,
+      },
+    },
+    {
+      new: true,
+    },
+  ).select('-password -refreshToken');
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Job bookmarked Successfully'));
+});
+
+const removeBookmarkedJob = asyncHandler(async (req, res) => {
+  const { jobId } = req.params;
+  if (!jobId || jobId.trim() === '') {
+    throw new ApiError(400, 'Bookmarked Job Id is required');
+  }
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $pull: {
+        savedJobs: jobId,
+      },
+    },
+    {
+      new: true,
+    },
+  ).select('-password -refreshToken');
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, 'Bookmarked Job delected successfully'));
+});
+const getSavedJobs = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id)
+    .populate('savedJobs')
+    .select('-password -refreshToken');
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, user.savedJobs, 'Saved Jobs Fetched Successfully '),
+    );
+});
 export {
   registerUser,
   loginUser,
@@ -379,4 +441,7 @@ export {
   updateResume,
   updateSkill,
   removeSkill,
+  bookMarkJob,
+  removeBookmarkedJob,
+  getSavedJobs,
 };
