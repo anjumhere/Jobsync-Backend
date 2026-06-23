@@ -1,8 +1,13 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import {
+  uploadOnCloudinary,
+  deleteFromCloudinary,
+} from '../utils/cloudinary.js';
 import { Company } from '../models/company.model.js';
+import fs from 'fs';
+import mongoose from 'mongoose';
 const createCompany = asyncHandler(async (req, res) => {
   const { name, description, website, industry, location } = req.body;
   if (!name || name.trim() === '') {
@@ -135,10 +140,64 @@ const updateMyCompany = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, updatedCompany, 'Company updated Successfully'));
 });
+const updateCompanyLogo = asyncHandler(async (req, res) => {
+  const logoLocalfilePath = req.file?.path;
+  if (!logoLocalfilePath) {
+    throw new ApiError(400, 'Logo required');
+  }
+
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      throw new ApiError(400, 'Invalid Company Id format');
+    }
+    const company = await Company.findById(req.params.id);
+    if (!company) {
+      throw new ApiError(404, 'Company not found');
+    }
+
+    if (company.owner.toString() !== req.user._id.toString()) {
+      throw new ApiError(403, 'You are not Authorized to perform this action');
+    }
+
+    const oldLogoUrl = company.logo;
+    const logo = await uploadOnCloudinary(logoLocalfilePath);
+    if (!logo || !logo.url) {
+      throw new ApiError(500, 'Logo Upload failed');
+    }
+    if (oldLogoUrl) {
+      await deleteFromCloudinary(oldLogoUrl);
+    }
+
+    const updatedCompany = await Company.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          logo: logo.url,
+        },
+      },
+      { new: true },
+    );
+
+    if (fs.existsSync(logoLocalfilePath)) {
+      fs.unlinkSync(logoLocalfilePath);
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, updatedCompany, 'Logo Updated Successfully'));
+  } catch (error) {
+    if (fs.existsSync(logoLocalfilePath)) {
+      fs.unlinkSync(logoLocalfilePath);
+    }
+    throw error;
+  }
+});
+
 export {
   createCompany,
   getAllCompanies,
   getCompanyById,
   getMyCompanies,
   updateMyCompany,
+  updateCompanyLogo,
 };
