@@ -101,5 +101,44 @@ const getMyCompanies = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, companies, 'My companies fetched successfully'));
 });
+const updateMyCompany = asyncHandler(async (req, res) => {
+  const { name, description, website, industry, location } = req.body;
 
-export { createCompany, getAllCompanies, getCompanyById, getMyCompanies };
+  const updateFields = {};
+  if (name) updateFields.name = name.trim();
+  if (description) updateFields.description = description.trim();
+  if (website) updateFields.website = website.trim();
+  if (industry) updateFields.industry = industry.trim();
+  if (location) updateFields.location = location.trim();
+  if (!Object.keys(updateFields).length) {
+    throw new ApiError(400, 'At least one field is required to update ');
+  }
+  const company = await Company.findById(req.params.id);
+  if (!company) {
+    throw new ApiError(404, 'Company not found ');
+  }
+
+  if (company.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, 'You are not authorized to update this company');
+  }
+  const updatedCompany = await Company.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: updateFields,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedCompany, 'Company updated Successfully'));
+});
+export {
+  createCompany,
+  getAllCompanies,
+  getCompanyById,
+  getMyCompanies,
+  updateMyCompany,
+};

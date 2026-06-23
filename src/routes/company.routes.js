@@ -6,6 +6,7 @@ import {
   getAllCompanies,
   getCompanyById,
   getMyCompanies,
+  updateMyCompany,
 } from '../controllers/company.controller.js';
 
 const router = Router();
@@ -14,5 +15,6 @@ router
   .post(verifyJWT, upload.single('logo'), createCompany)
   .get(getAllCompanies);
 router.route('/my-companies').get(verifyJWT, getMyCompanies);
-router.route('/:id').get(getCompanyById);
+router.route('/:id').get(getCompanyById).patch(verifyJWT, updateMyCompany);
+
 export default router;
