@@ -98,7 +98,7 @@ This document lists all planned API endpoints for the Job Board platform, organi
 
 ## Company
 
-### POST /api/companies
+## POST /api/companies
 
 - Purpose: Create a company
 - Access: logged-in
