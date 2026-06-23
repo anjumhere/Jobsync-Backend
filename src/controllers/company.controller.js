@@ -8,6 +8,7 @@ import {
 import { Company } from '../models/company.model.js';
 import fs from 'fs';
 import mongoose from 'mongoose';
+import { Job } from '../models/job.model.js';
 const createCompany = asyncHandler(async (req, res) => {
   const { name, description, website, industry, location } = req.body;
   if (!name || name.trim() === '') {
@@ -73,13 +74,14 @@ const getAllCompanies = asyncHandler(async (req, res) => {
     ),
   );
 });
-
 const getCompanyById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   if (!id) {
     throw new ApiError(400, 'Id is required');
   }
-
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    throw new ApiError(400, 'Invalid company Id format');
+  }
   const company = await Company.findById(id).populate(
     'owner',
     'fullName avatar headline',
@@ -192,6 +194,42 @@ const updateCompanyLogo = asyncHandler(async (req, res) => {
     throw error;
   }
 });
+const deleteCompany = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!id) {
+    throw new ApiError(400, 'Company Id is required');
+  }
+
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    throw new ApiError(400, 'Invalid company Id format');
+  }
+
+  const company = await Company.findById(req.params.id);
+  if (!company) {
+    throw new ApiError(404, 'Company not found');
+  }
+
+  if (company.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, 'You are Unauthorized to perform this action');
+  }
+  const appliedJobs = await Job.find({ company: req.params.id });
+  if (appliedJobs.length) {
+    throw new ApiError(
+      400,
+      'Can not Delete companies with active Job postings',
+    );
+  }
+
+  const logoUrl = company.logo;
+  if (logoUrl) {
+    await deleteFromCloudinary(logoUrl);
+  }
+  const deletedCompany = await Company.findByIdAndDelete(req.params.id);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, deletedCompany, 'Company Deleted Succesfully'));
+});
 
 export {
   createCompany,
@@ -200,4 +238,5 @@ export {
   getMyCompanies,
   updateMyCompany,
   updateCompanyLogo,
+  deleteCompany,
 };
