@@ -88,5 +88,18 @@ const getCompanyById = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, company, 'Company Fetched Successfully'));
 });
+const getMyCompanies = asyncHandler(async (req, res) => {
+  const companies = await Company.find({ owner: req.user._id }).sort({
+    createdAt: -1,
+  });
 
-export { createCompany, getAllCompanies, getCompanyById };
+  if (!companies.length) {
+    return res.status(200).json(new ApiResponse(200, [], 'No Companies found'));
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, companies, 'My companies fetched successfully'));
+});
+
+export { createCompany, getAllCompanies, getCompanyById, getMyCompanies };
