@@ -1,3 +1,7 @@
+import mongoose from 'mongoose';
+import fs from 'fs';
+import { Company } from '../models/company.model.js';
+import { Job } from '../models/job.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -5,20 +9,21 @@ import {
   uploadOnCloudinary,
   deleteFromCloudinary,
 } from '../utils/cloudinary.js';
-import { Company } from '../models/company.model.js';
-import fs from 'fs';
-import mongoose from 'mongoose';
-import { Job } from '../models/job.model.js';
+
 const createCompany = asyncHandler(async (req, res) => {
   const { name, description, website, industry, location } = req.body;
+
   if (!name || name.trim() === '') {
     throw new ApiError(400, 'Company name is required.');
   }
+
   const logoLocalfilePath = req.file?.path;
   const logo = await uploadOnCloudinary(logoLocalfilePath);
-  if (logo && !logo.url) {
-    throw new ApiError(500, 'Logo Upload failed');
+
+  if (logoLocalfilePath && !logo?.url) {
+    throw new ApiError(500, 'Logo upload failed');
   }
+
   const company = await Company.create({
     owner: req.user._id,
     name,
@@ -30,25 +35,19 @@ const createCompany = asyncHandler(async (req, res) => {
   });
 
   return res
-    .status(200)
-    .json(new ApiResponse(200, company, 'Company Created Successfully'));
+    .status(201)
+    .json(new ApiResponse(201, company, 'Company created successfully'));
 });
+
 const getAllCompanies = asyncHandler(async (req, res) => {
   const { search, industry, location, page = 1, limit = 10 } = req.query;
 
   const filter = {};
+  if (search) filter.name = { $regex: search, $options: 'i' };
+  if (industry) filter.industry = { $regex: industry, $options: 'i' };
+  if (location) filter.location = { $regex: location, $options: 'i' };
 
-  if (search) {
-    filter.name = { $regex: search, $options: 'i' };
-  }
-  if (industry) {
-    filter.industry = { $regex: industry, $options: 'i' };
-  }
-  if (location) {
-    filter.location = { $regex: location, $options: 'i' };
-  }
-
-  const skip = (page - 1) * limit;
+  const skip = (Number(page) - 1) * Number(limit);
 
   const [companies, total] = await Promise.all([
     Company.find(filter)
@@ -58,9 +57,6 @@ const getAllCompanies = asyncHandler(async (req, res) => {
     Company.countDocuments(filter),
   ]);
 
-  if (!companies.length) {
-    return res.status(200).json(new ApiResponse(200, [], 'No Companies Found'));
-  }
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -70,18 +66,18 @@ const getAllCompanies = asyncHandler(async (req, res) => {
         page: Number(page),
         totalPages: Math.ceil(total / limit),
       },
-      'Companies Fetched Successfully',
+      'Companies fetched successfully',
     ),
   );
 });
+
 const getCompanyById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  if (!id) {
-    throw new ApiError(400, 'Id is required');
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new ApiError(400, 'Invalid company ID format');
   }
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    throw new ApiError(400, 'Invalid company Id format');
-  }
+
   const company = await Company.findById(id).populate(
     'owner',
     'fullName avatar headline',
@@ -93,23 +89,22 @@ const getCompanyById = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, company, 'Company Fetched Successfully'));
+    .json(new ApiResponse(200, company, 'Company fetched successfully'));
 });
+
 const getMyCompanies = asyncHandler(async (req, res) => {
   const companies = await Company.find({ owner: req.user._id }).sort({
     createdAt: -1,
   });
 
-  if (!companies.length) {
-    return res.status(200).json(new ApiResponse(200, [], 'No Companies found'));
-  }
-
   return res
     .status(200)
     .json(new ApiResponse(200, companies, 'My companies fetched successfully'));
 });
+
 const updateMyCompany = asyncHandler(async (req, res) => {
   const { name, description, website, industry, location } = req.body;
+  const { id } = req.params;
 
   const updateFields = {};
   if (name) updateFields.name = name.trim();
@@ -117,118 +112,86 @@ const updateMyCompany = asyncHandler(async (req, res) => {
   if (website) updateFields.website = website.trim();
   if (industry) updateFields.industry = industry.trim();
   if (location) updateFields.location = location.trim();
+
   if (!Object.keys(updateFields).length) {
-    throw new ApiError(400, 'At least one field is required to update ');
+    throw new ApiError(400, 'At least one field is required to update');
   }
-  const company = await Company.findById(req.params.id);
-  if (!company) {
-    throw new ApiError(404, 'Company not found ');
-  }
+
+  const company = await Company.findById(id);
+  if (!company) throw new ApiError(404, 'Company not found');
 
   if (company.owner.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, 'You are not authorized to update this company');
+    throw new ApiError(403, 'Unauthorized to update this company');
   }
+
   const updatedCompany = await Company.findByIdAndUpdate(
-    req.params.id,
-    {
-      $set: updateFields,
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
+    id,
+    { $set: updateFields },
+    { new: true, runValidators: true },
   );
+
   return res
     .status(200)
-    .json(new ApiResponse(200, updatedCompany, 'Company updated Successfully'));
+    .json(new ApiResponse(200, updatedCompany, 'Company updated successfully'));
 });
+
 const updateCompanyLogo = asyncHandler(async (req, res) => {
   const logoLocalfilePath = req.file?.path;
-  if (!logoLocalfilePath) {
-    throw new ApiError(400, 'Logo required');
-  }
+  const { id } = req.params;
+
+  if (!logoLocalfilePath) throw new ApiError(400, 'Logo file is required');
 
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      throw new ApiError(400, 'Invalid Company Id format');
-    }
-    const company = await Company.findById(req.params.id);
-    if (!company) {
-      throw new ApiError(404, 'Company not found');
-    }
+    const company = await Company.findById(id);
+    if (!company) throw new ApiError(404, 'Company not found');
 
     if (company.owner.toString() !== req.user._id.toString()) {
-      throw new ApiError(403, 'You are not Authorized to perform this action');
+      throw new ApiError(403, 'Unauthorized');
     }
 
-    const oldLogoUrl = company.logo;
     const logo = await uploadOnCloudinary(logoLocalfilePath);
-    if (!logo || !logo.url) {
-      throw new ApiError(500, 'Logo Upload failed');
-    }
-    if (oldLogoUrl) {
-      await deleteFromCloudinary(oldLogoUrl);
-    }
+    if (!logo?.url) throw new ApiError(500, 'Logo upload failed');
+
+    if (company.logo) await deleteFromCloudinary(company.logo);
 
     const updatedCompany = await Company.findByIdAndUpdate(
-      req.params.id,
-      {
-        $set: {
-          logo: logo.url,
-        },
-      },
+      id,
+      { $set: { logo: logo.url } },
       { new: true },
     );
 
-    if (fs.existsSync(logoLocalfilePath)) {
-      fs.unlinkSync(logoLocalfilePath);
-    }
-
     return res
       .status(200)
-      .json(new ApiResponse(200, updatedCompany, 'Logo Updated Successfully'));
-  } catch (error) {
-    if (fs.existsSync(logoLocalfilePath)) {
-      fs.unlinkSync(logoLocalfilePath);
-    }
-    throw error;
+      .json(new ApiResponse(200, updatedCompany, 'Logo updated successfully'));
+  } finally {
+    if (fs.existsSync(logoLocalfilePath)) fs.unlinkSync(logoLocalfilePath);
   }
 });
+
 const deleteCompany = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  if (!id) {
-    throw new ApiError(400, 'Company Id is required');
-  }
 
-  if (!mongoose.isValidObjectId(req.params.id)) {
-    throw new ApiError(400, 'Invalid company Id format');
-  }
+  if (!mongoose.isValidObjectId(id))
+    throw new ApiError(400, 'Invalid ID format');
 
-  const company = await Company.findById(req.params.id);
-  if (!company) {
-    throw new ApiError(404, 'Company not found');
-  }
+  const company = await Company.findById(id);
+  if (!company) throw new ApiError(404, 'Company not found');
 
   if (company.owner.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, 'You are Unauthorized to perform this action');
-  }
-  const appliedJobs = await Job.find({ company: req.params.id });
-  if (appliedJobs.length) {
-    throw new ApiError(
-      400,
-      'Can not Delete companies with active Job postings',
-    );
+    throw new ApiError(403, 'Unauthorized');
   }
 
-  const logoUrl = company.logo;
-  if (logoUrl) {
-    await deleteFromCloudinary(logoUrl);
+  const activeJobs = await Job.countDocuments({ company: id });
+  if (activeJobs > 0) {
+    throw new ApiError(400, 'Cannot delete companies with active job postings');
   }
-  const deletedCompany = await Company.findByIdAndDelete(req.params.id);
+
+  if (company.logo) await deleteFromCloudinary(company.logo);
+  await Company.findByIdAndDelete(id);
 
   return res
     .status(200)
-    .json(new ApiResponse(200, deletedCompany, 'Company Deleted Succesfully'));
+    .json(new ApiResponse(200, {}, 'Company deleted successfully'));
 });
 
 export {
