@@ -30,7 +30,7 @@ const postJob = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Company not found');
   }
 
-  if (company.owner.toString() !== req.user?.id.toString()) {
+  if (company.owner.toString() !== req.user?._id.toString()) {
     throw new ApiError(
       403,
       'You are only authorized to post jobs for the company you own',
