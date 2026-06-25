@@ -60,4 +60,65 @@ const postJob = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, createdJob, 'Job created successfully'));
 });
 
+const getAllJobs = asyncHandler(async (req, res) => {
+  const {
+    search,
+    location,
+    jobType,
+    salaryMin,
+    salaryMax,
+    page = 1,
+    limit = 10,
+  } = req.query;
+
+  const filter = {};
+  filter.isActive = true;
+
+  if (search) {
+    filter.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } },
+    ];
+  }
+  if (location) {
+    filter.location = { $regex: location, $options: 'i' };
+  }
+  if (jobType) {
+    filter.jobType = jobType;
+  }
+  if (salaryMin) {
+    filter.salaryMin = { $gte: Number(salaryMin) };
+  }
+  if (salaryMax) {
+    filter.salaryMax = { $lte: Number(salaryMax) };
+  }
+
+  const skip = (page - 1) * limit;
+
+  const [jobs, total] = await Promise.all([
+    Job.find(filter)
+      .populate('company', 'name logo location')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit)),
+    Job.countDocuments(filter),
+  ]);
+
+  if (!jobs.length) {
+    return res.status(200).json(new ApiResponse(200, [], 'No jobs found'));
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        jobs,
+        total,
+        page: Number(page),
+        totalPages: Math.ceil(total / limit),
+      },
+      'Jobs fetched successfully',
+    ),
+  );
+});
 export { postJob };
