@@ -5,6 +5,7 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { deleteFromCloudinary } from '../utils/cloudinary.js';
 import { Job } from '../models/job.model.js';
 import { Company } from '../models/company.model.js';
+import mongoose from 'mongoose';
 const postJob = asyncHandler(async (req, res) => {
   const {
     companyId,
@@ -61,6 +62,7 @@ const postJob = asyncHandler(async (req, res) => {
 });
 
 const getAllJobs = asyncHandler(async (req, res) => {
+  // get search location jobType , salaryMin, salaryMax, page, limit
   const {
     search,
     location,
@@ -73,7 +75,6 @@ const getAllJobs = asyncHandler(async (req, res) => {
 
   const filter = {};
   filter.isActive = true;
-
   if (search) {
     filter.$or = [
       { title: { $regex: search, $options: 'i' } },
@@ -83,19 +84,15 @@ const getAllJobs = asyncHandler(async (req, res) => {
   if (location) {
     filter.location = { $regex: location, $options: 'i' };
   }
-  if (jobType) {
-    filter.jobType = jobType;
-  }
+
   if (salaryMin) {
     filter.salaryMin = { $gte: Number(salaryMin) };
   }
   if (salaryMax) {
     filter.salaryMax = { $lte: Number(salaryMax) };
   }
-
   const skip = (page - 1) * limit;
-
-  const [jobs, total] = await Promise.all([
+  const [job, total] = await Promise.all([
     Job.find(filter)
       .populate('company', 'name logo location')
       .sort({ createdAt: -1 })
@@ -103,8 +100,7 @@ const getAllJobs = asyncHandler(async (req, res) => {
       .limit(Number(limit)),
     Job.countDocuments(filter),
   ]);
-
-  if (!jobs.length) {
+  if (!job.length) {
     return res.status(200).json(new ApiResponse(200, [], 'No jobs found'));
   }
 
@@ -112,13 +108,32 @@ const getAllJobs = asyncHandler(async (req, res) => {
     new ApiResponse(
       200,
       {
-        jobs,
+        job,
         total,
         page: Number(page),
         totalPages: Math.ceil(total / limit),
       },
-      'Jobs fetched successfully',
+      'Jobs fetched Successfully',
     ),
   );
 });
-export { postJob };
+
+const getJobById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    throw new ApiError(400, 'Invalid job id format');
+  }
+
+  const job = await Job.findById(id).populate(
+    'company',
+    'name, logo, location, website, industry',
+  );
+  if (!job) {
+    throw new ApiError(404, 'No jobs found');
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, job, 'Job fetched successfully'));
+});
+export { postJob, getAllJobs, getJobById };
