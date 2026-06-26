@@ -175,4 +175,62 @@ const getJobsByCompany = asyncHandler(async (req, res) => {
     ),
   );
 });
-export { postJob, getAllJobs, getJobById, getJobsByCompany };
+
+const updateJob = asyncHandler(async (req, res) => {
+  const {
+    title,
+    description,
+    requirements,
+    location,
+    jobType,
+    salaryMin,
+    salaryMax,
+  } = req.body;
+
+  const { id } = req.params;
+
+  const updateFields = {};
+
+  if (title) updateFields.title = title.trim();
+  if (description) updateFields.description = description.trim();
+  if (requirements)
+    updateFields.requirements = Array.isArray(requirements)
+      ? requirements
+      : requirements.split(',').map((item) => item.trim());
+  if (location) updateFields.location = location.trim();
+
+  if (jobType) updateFields.jobType = jobType;
+  if (salaryMin) updateFields.salaryMin = salaryMin;
+  if (salaryMax) updateFields.salaryMax = salaryMax;
+
+  if (!Object.keys(updateFields).length) {
+    throw new ApiError(400, 'At least one field is required to update');
+  }
+  const job = await Job.findById(id);
+  if (!job) {
+    throw new ApiError(404, 'Job not found');
+  }
+  const company = await Company.findById(job.company);
+  if (!company) {
+    throw new ApiError(404, 'Company not found');
+  }
+
+  if (company.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, 'You are not authorized to update this job');
+  }
+  const updatedJob = await Job.findByIdAndUpdate(
+    id,
+    {
+      $set: updateFields,
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedJob, 'Job updated Successfully'));
+});
+export { postJob, getAllJobs, getJobById, getJobsByCompany, updateJob };

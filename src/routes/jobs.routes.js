@@ -6,10 +6,11 @@ import {
   getJobById,
   getJobsByCompany,
   postJob,
+  updateJob,
 } from '../controllers/jobs.controller.js';
 
 const router = Router();
 router.route('/').post(verifyJWT, postJob).get(getAllJobs);
 router.route('/company/:companyId').get(getJobsByCompany);
-router.route('/:id').get(getJobById);
+router.route('/:id').get(getJobById).patch(verifyJWT, updateJob);
 export default router;
