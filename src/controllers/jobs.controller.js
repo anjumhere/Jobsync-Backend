@@ -1,8 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { ApiError } from '../utils/ApiError.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
-import { deleteFromCloudinary } from '../utils/cloudinary.js';
 import { Job } from '../models/job.model.js';
 import { Company } from '../models/company.model.js';
 import mongoose from 'mongoose';
@@ -233,4 +231,39 @@ const updateJob = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, updatedJob, 'Job updated Successfully'));
 });
-export { postJob, getAllJobs, getJobById, getJobsByCompany, updateJob };
+
+const toggleActiveJob = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const job = await Job.findById(id);
+  if (!job) {
+    throw new ApiError(404, 'Job not found');
+  }
+
+  const company = await Company.findById(job.company);
+  if (!company) {
+    throw new ApiError(404, 'Company not found');
+  }
+
+  if (company.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, 'You are not authorized to perform this action');
+  }
+
+  const updatedJob = await Job.findByIdAndUpdate(
+    id,
+    {
+      $set: { isActive: !job.isActive },
+    },
+    { new: true, runValidators: true },
+  );
+
+  return res.status(200).json(new ApiResponse(200, updatedJob, 'Toggle done'));
+});
+
+export {
+  postJob,
+  getAllJobs,
+  getJobById,
+  getJobsByCompany,
+  updateJob,
+  toggleActiveJob,
+};
