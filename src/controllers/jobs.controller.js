@@ -122,7 +122,7 @@ const getJobById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   if (!mongoose.isValidObjectId(req.params.id)) {
-    throw new ApiError(400, 'Invalid job id format');
+    throw new ApiError(400, 'Invalid job id Format');
   }
 
   const job = await Job.findById(id).populate(
