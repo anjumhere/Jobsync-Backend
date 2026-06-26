@@ -4,10 +4,12 @@ import { upload } from '../middleware/multer.middleware.js';
 import {
   getAllJobs,
   getJobById,
+  getJobsByCompany,
   postJob,
 } from '../controllers/jobs.controller.js';
 
 const router = Router();
 router.route('/').post(verifyJWT, postJob).get(getAllJobs);
+router.route('/company/:companyId').get(getJobsByCompany);
 router.route('/:id').get(getJobById);
 export default router;

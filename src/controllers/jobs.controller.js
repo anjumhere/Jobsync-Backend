@@ -136,4 +136,43 @@ const getJobById = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, job, 'Job fetched successfully'));
 });
-export { postJob, getAllJobs, getJobById };
+
+const getJobsByCompany = asyncHandler(async (req, res) => {
+  const { companyId } = req.params;
+  const { page = 1, limit = 10 } = req.query;
+  if (!mongoose.isValidObjectId(req.params.companyId)) {
+    throw new ApiError(400, 'Invalid company id format');
+  }
+  const company = await Company.findById(companyId);
+  if (!company) {
+    throw new ApiError(404, 'Company not found');
+  }
+  const skip = (page - 1) * limit;
+  const [jobs, total] = await Promise.all([
+    Job.find({ company: companyId })
+      .populate('company', 'name logo')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit)),
+    Job.countDocuments({ company: companyId }),
+  ]);
+
+  if (!jobs.length) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, [], 'No jobs found under this company'));
+  }
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        jobs,
+        total,
+        page: Number(page),
+        totalPages: Math.ceil(total / limit),
+      },
+      'All jobs fetched successfully',
+    ),
+  );
+});
+export { postJob, getAllJobs, getJobById, getJobsByCompany };
