@@ -4,6 +4,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { Job } from '../models/job.model.js';
 import { Company } from '../models/company.model.js';
 import mongoose from 'mongoose';
+import { Application } from '../models/application.model.js';
 const postJob = asyncHandler(async (req, res) => {
   const {
     companyId,
@@ -259,6 +260,31 @@ const toggleActiveJob = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, updatedJob, 'Toggle done'));
 });
 
+const deleteJob = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const job = await Job.findById(id);
+  if (!job) {
+    throw new ApiError(404, 'Job not found');
+  }
+
+  const company = await Company.findById(job.company);
+  if (!company) {
+    throw new ApiError(404, 'Company not found');
+  }
+
+  if (company.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, 'You are not authroized to delete this job');
+  }
+  const hasApplications = await Application.exists({ job: id });
+  if (hasApplications) {
+    throw new ApiError(400, 'Cannot delete job with existing applications');
+  }
+
+  const deletedJob = await Job.findByIdAndDelete(id);
+  return res
+    .status(200)
+    .json(new ApiResponse(200, deletedJob, 'Job deleted Successfully'));
+});
 export {
   postJob,
   getAllJobs,
@@ -266,4 +292,5 @@ export {
   getJobsByCompany,
   updateJob,
   toggleActiveJob,
+  deleteJob,
 };

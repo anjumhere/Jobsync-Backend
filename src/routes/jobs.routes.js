@@ -8,11 +8,16 @@ import {
   postJob,
   updateJob,
   toggleActiveJob,
+  deleteJob,
 } from '../controllers/jobs.controller.js';
 
 const router = Router();
 router.route('/').post(verifyJWT, postJob).get(getAllJobs);
 router.route('/company/:companyId').get(getJobsByCompany);
-router.route('/:id').get(getJobById).patch(verifyJWT, updateJob);
+router
+  .route('/:id')
+  .get(getJobById)
+  .patch(verifyJWT, updateJob)
+  .delete(verifyJWT, deleteJob);
 router.route('/:id/toggle-active').patch(verifyJWT, toggleActiveJob);
 export default router;
