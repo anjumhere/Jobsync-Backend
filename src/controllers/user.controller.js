@@ -34,28 +34,22 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'All fields are required');
   }
 
-  // email validation
-  //
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     throw new ApiError(400, 'Please provide a valid email');
   }
 
-  // check if the user already exsists in the database
   const existedUser = await User.findOne({ email });
   if (existedUser) {
     throw new ApiError(409, 'User already exists');
   }
 
-  // get avatar and cover images localfilepaths
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
   const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
-  // send the avatar and coverImage locafilepaths to the cloudinary
   const avatar = await uploadOnCloudinary(avatarLocalPath);
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-  // create an entry in the database
   const user = await User.create({
     fullName,
     email,
@@ -145,7 +139,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const incomingRefreshToken =
       req.cookies?.refreshToken || req.body?.refreshToken;
     if (!incomingRefreshToken) {
-      throw new ApiError(401, 'Unauthroized request');
+      throw new ApiError(401, 'Unauthorized request');
     }
     const decodedToken = jwt.verify(
       incomingRefreshToken,
@@ -178,7 +172,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             accessToken,
             refreshToken: newRefreshToken,
           },
-          'AccessToken refreshed ',
+          'AccessToken refreshed',
         ),
       );
   } catch (error) {
@@ -188,22 +182,22 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 const changePassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   if (!oldPassword || !newPassword) {
-    throw new ApiError(400, 'Both fields are requrired');
+    throw new ApiError(400, 'Both fields are required');
   }
   const user = await User.findById(req.user._id);
   if (!user) {
-    throw new ApiError(404, 'User not found ');
+    throw new ApiError(404, 'User not found');
   }
 
   const isPasswordValid = await user.isPasswordCorrect(oldPassword);
   if (!isPasswordValid) {
-    throw new ApiError(400, 'Invalid old Password');
+    throw new ApiError(400, 'Invalid old password');
   }
   user.password = newPassword;
   await user.save({ validateBeforeSave: false });
   return res
     .status(200)
-    .json(new ApiResponse(200, {}, 'Password changewd successfully'));
+    .json(new ApiResponse(200, {}, 'Password changed successfully'));
 });
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
@@ -235,7 +229,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   }
   return res
     .status(200)
-    .json(new ApiResponse(200, user, 'Accound Details Changed Successfully'));
+    .json(new ApiResponse(200, user, 'Account details changed successfully'));
 });
 const changeUserAvatar = asyncHandler(async (req, res) => {
   const avatarLocalPath = req.file?.path;
@@ -246,7 +240,7 @@ const changeUserAvatar = asyncHandler(async (req, res) => {
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
   if (!avatar.url) {
-    throw new ApiError(400, 'Avatar Upload failed');
+    throw new ApiError(400, 'Avatar upload failed');
   }
 
   const user = await User.findByIdAndUpdate(
@@ -263,17 +257,17 @@ const changeUserAvatar = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, user, 'Avatar Change Successfully'));
+    .json(new ApiResponse(200, user, 'Avatar changed successfully'));
 });
 const changeUserCoverImage = asyncHandler(async (req, res) => {
   const coverImageLocalPath = req.file?.path;
   if (!coverImageLocalPath) {
-    throw new ApiError(400, 'coverImage image is required');
+    throw new ApiError(400, 'Cover image is required');
   }
 
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
   if (!coverImage.url) {
-    throw new ApiError(400, 'Cover Image Upload failed');
+    throw new ApiError(400, 'Cover image upload failed');
   }
 
   const user = await User.findByIdAndUpdate(
@@ -290,7 +284,7 @@ const changeUserCoverImage = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, user, 'Cover Image Change Successfully'));
+    .json(new ApiResponse(200, user, 'Cover image changed successfully'));
 });
 
 const updateResume = asyncHandler(async (req, res) => {
@@ -300,7 +294,7 @@ const updateResume = asyncHandler(async (req, res) => {
   }
 
   if (req.file.mimetype !== 'application/pdf') {
-    throw new ApiError(400, 'Only pdf files are allowed.');
+    throw new ApiError(400, 'Only PDF files are allowed');
   }
   const resume = await uploadOnCloudinary(resumeLocalPath);
   if (!resume.url) {
@@ -319,7 +313,7 @@ const updateResume = asyncHandler(async (req, res) => {
   ).select('-password -refreshToken');
   return res
     .status(200)
-    .json(new ApiResponse(200, user, 'Resume Uploaded Successfully'));
+    .json(new ApiResponse(200, user, 'Resume uploaded successfully'));
 });
 const updateSkill = asyncHandler(async (req, res) => {
   const { skill } = req.body;
@@ -342,7 +336,7 @@ const updateSkill = asyncHandler(async (req, res) => {
   }
   return res
     .status(200)
-    .json(new ApiResponse(200, user, 'Skill Added Successfully'));
+    .json(new ApiResponse(200, user, 'Skill added successfully'));
 });
 const removeSkill = asyncHandler(async (req, res) => {
   const { skill } = req.params;
@@ -364,13 +358,13 @@ const removeSkill = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, user, 'Skill Removed Successfully'));
+    .json(new ApiResponse(200, user, 'Skill removed successfully'));
 });
 
 const bookMarkJob = asyncHandler(async (req, res) => {
   const { jobId } = req.params;
   if (!jobId || jobId.trim() === '') {
-    throw new ApiError(400, 'Job Id  is required');
+    throw new ApiError(400, 'Job ID is required');
   }
   const user = await User.findByIdAndUpdate(
     req.user._id,
@@ -388,13 +382,13 @@ const bookMarkJob = asyncHandler(async (req, res) => {
   }
   return res
     .status(200)
-    .json(new ApiResponse(200, user, 'Job bookmarked Successfully'));
+    .json(new ApiResponse(200, user, 'Job bookmarked successfully'));
 });
 
 const removeBookmarkedJob = asyncHandler(async (req, res) => {
   const { jobId } = req.params;
   if (!jobId || jobId.trim() === '') {
-    throw new ApiError(400, 'Bookmarked Job Id is required');
+    throw new ApiError(400, 'Bookmarked job ID is required');
   }
   const user = await User.findByIdAndUpdate(
     req.user._id,
@@ -412,7 +406,7 @@ const removeBookmarkedJob = asyncHandler(async (req, res) => {
   }
   return res
     .status(200)
-    .json(new ApiResponse(200, user, 'Bookmarked Job delected successfully'));
+    .json(new ApiResponse(200, user, 'Bookmarked job deleted successfully'));
 });
 const getSavedJobs = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id)
@@ -425,7 +419,7 @@ const getSavedJobs = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, user.savedJobs, 'Saved Jobs Fetched Successfully '),
+      new ApiResponse(200, user.savedJobs, 'Saved jobs fetched successfully'),
     );
 });
 export {
