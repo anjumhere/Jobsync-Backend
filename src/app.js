@@ -4,6 +4,7 @@ import cors from 'cors';
 import userRouter from './routes/user.routes.js';
 import companyRouter from './routes/company.routes.js';
 import jobsRouter from './routes/jobs.routes.js';
+import applicationRouter from './routes/application.routes.js';
 const app = express();
 
 app.use(
@@ -26,6 +27,10 @@ app.use('/api/v1/companies', companyRouter);
 
 // jobs routes
 app.use('/api/v1/jobs', jobsRouter);
+
+//const application routes
+
+app.use('/api/v1/applications', applicationRouter);
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({
