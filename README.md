@@ -233,8 +233,8 @@ Base URL: `/api/v1`
 | Models                   | ✅ Complete    |
 | User controllers         | ✅ Complete    |
 | Company controllers      | ✅ Complete    |
-| Job controllers          | 🔄 In progress |
-| Application controllers  | ⏳ Not started |
+| Job controllers          | ✅ Complete    |
+| Application controllers  | 🔄 In progress |
 | Postman testing          | 🔄 In progress |
 | Frontend (separate repo) | ⏳ Not started |
 
