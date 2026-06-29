@@ -4,6 +4,7 @@ import {
   getMyApplications,
   getJobApplications,
   updateApplicationStatus,
+  withdrawApplication,
 } from '../controllers/application.controller.js';
 import { verifyJWT } from '../middleware/auth.middleware.js';
 
@@ -13,4 +14,5 @@ router.route('/:jobId').post(verifyJWT, applyToJob);
 router.route('/my-applications').get(verifyJWT, getMyApplications);
 router.route('/job/:jobId').get(verifyJWT, getJobApplications);
 router.route('/:id/status').patch(verifyJWT, updateApplicationStatus);
+router.route('/:id').delete(verifyJWT, withdrawApplication);
 export default router;

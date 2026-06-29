@@ -183,9 +183,40 @@ const updateApplicationStatus = asyncHandler(async (req, res) => {
     ),
   );
 });
+
+const withdrawApplication = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new ApiError(400, 'Invalid application id format');
+  }
+
+  const application = await Application.findById(id);
+  if (!application) {
+    throw new ApiError(404, 'Application not found');
+  }
+
+  if (application.applicant.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, 'You are not authorized to perform this action');
+  }
+
+  const deletedApplication = await Application.findByIdAndDelete(id);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        deletedApplication,
+        'Application Deleted Successfully',
+      ),
+    );
+});
+
 export {
   applyToJob,
   getMyApplications,
   getJobApplications,
   updateApplicationStatus,
+  withdrawApplication,
 };
