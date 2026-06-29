@@ -130,4 +130,62 @@ const getJobApplications = asyncHandler(async (req, res) => {
     ),
   );
 });
-export { applyToJob, getMyApplications, getJobApplications };
+
+const updateApplicationStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new ApiError(400, 'Invalid application id format');
+  }
+  const { status } = req.body;
+  if (!status) {
+    throw new ApiError(400, 'Application status is required');
+  }
+
+  const application = await Application.findById(id);
+  if (!application) {
+    throw new ApiError(404, 'Application not found');
+  }
+  const job = await Job.findById(application.job);
+  if (!job) {
+    throw new ApiError(404, 'Job not found');
+  }
+
+  const company = await Company.findById(job.company);
+  if (!company) {
+    throw new ApiError(404, 'Company not found');
+  }
+
+  if (company.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, 'You are not authorized to perform this action');
+  }
+
+  const updatedApplication = await Application.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        status: status,
+      },
+    },
+    {
+      new: true,
+      runValidators: true,
+    },
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        updatedApplication,
+      },
+      'Application status updated successfully',
+    ),
+  );
+});
+export {
+  applyToJob,
+  getMyApplications,
+  getJobApplications,
+  updateApplicationStatus,
+};
