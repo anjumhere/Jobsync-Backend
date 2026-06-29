@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import {
   applyToJob,
-  viewApplications,
+  getMyApplications,
 } from '../controllers/application.controller.js';
 import { verifyJWT } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
 router.route('/:jobId').post(verifyJWT, applyToJob);
-router.route('/my-applications').get(verifyJWT, viewApplications);
+router.route('/my-applications').get(verifyJWT, getMyApplications);
 
 export default router;

@@ -50,7 +50,7 @@ const applyToJob = asyncHandler(async (req, res) => {
     );
 });
 
-const viewApplications = asyncHandler(async (req, res) => {
+const getMyApplications = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10 } = req.query;
   const skip = (page - 1) * limit;
 
@@ -81,4 +81,4 @@ const viewApplications = asyncHandler(async (req, res) => {
   );
 });
 
-export { applyToJob, viewApplications };
+export { applyToJob, getMyApplications };
