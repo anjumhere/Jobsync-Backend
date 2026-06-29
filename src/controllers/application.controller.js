@@ -80,5 +80,54 @@ const getMyApplications = asyncHandler(async (req, res) => {
     ),
   );
 });
+const getJobApplications = asyncHandler(async (req, res) => {
+  const { jobId } = req.params;
 
-export { applyToJob, getMyApplications };
+  const { page = 1, limit = 10 } = req.query;
+  const skip = (page - 1) * limit;
+
+  if (!mongoose.isValidObjectId(jobId)) {
+    throw new ApiError(400, 'Invalid job id format');
+  }
+
+  const job = await Job.findById(jobId);
+  if (!job) {
+    throw new ApiError(404, 'Job not found');
+  }
+
+  const company = await Company.findById(job.company);
+  if (!company) {
+    throw new ApiError(404, 'Company not found');
+  }
+
+  if (company.owner.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, 'You are not authroized to perform this action');
+  }
+
+  const [applicant, total] = await Promise.all([
+    Application.find({ job: jobId })
+      .populate('applicant', 'fullName avatar headline')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Application.countDocuments({ job: jobId }),
+  ]);
+  if (!applicant.length) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, [], 'No applicants found'));
+  }
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        applicants: applicant,
+        total,
+        page: Number(page),
+        totalPages: Math.ceil(total / limit),
+      },
+      'All applicants fetched successfully',
+    ),
+  );
+});
+export { applyToJob, getMyApplications, getJobApplications };
