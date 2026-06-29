@@ -50,4 +50,35 @@ const applyToJob = asyncHandler(async (req, res) => {
     );
 });
 
-export { applyToJob };
+const viewApplications = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const skip = (page - 1) * limit;
+
+  const [application, total] = await Promise.all([
+    Application.find({ applicant: req.user._id })
+      .populate('job', 'title location jobType salaryMin salaryMax')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Application.countDocuments({ applicant: req.user._id }),
+  ]);
+
+  if (!application.length) {
+    throw new ApiError(404, 'Application not found');
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        applications: application,
+        total,
+        page: Number(page),
+        totalPages: Math.ceil(total / limit),
+      },
+      'All active applications fetched successfully',
+    ),
+  );
+});
+
+export { applyToJob, viewApplications };
