@@ -193,6 +193,18 @@ const changePassword = asyncHandler(async (req, res) => {
   if (!isPasswordValid) {
     throw new ApiError(400, 'Invalid old password');
   }
+
+  if (oldPassword === newPassword) {
+    throw new ApiError(400, 'New password cannot be same as old password');
+  }
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    throw new ApiError(
+      400,
+      'Password must be at least 8 characters, include one uppercase letter and one number',
+    );
+  }
+
   user.password = newPassword;
   await user.save({ validateBeforeSave: false });
   return res
@@ -211,9 +223,9 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   }
 
   const updateFields = {};
-  if (fullName) updateFields.fullName = fullName.trim();
-  if (bio !== undefined) updateFields.bio = bio.trim();
-  if (headline !== undefined) updateFields.headline = headline.trim();
+  if (fullName?.trim()) updateFields.fullName = fullName.trim();
+  if (bio?.trim()) updateFields.bio = bio.trim();
+  if (headline?.trim()) updateFields.headline = headline.trim();
   const user = await User.findByIdAndUpdate(
     req.user._id,
     {
