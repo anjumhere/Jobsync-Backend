@@ -234,7 +234,7 @@ Base URL: `/api/v1`
 | User controllers         | ✅ Complete    |
 | Company controllers      | ✅ Complete    |
 | Job controllers          | ✅ Complete    |
-| Application controllers  | 🔄 In progress |
+| Application controllers  | ✅ Complete    |
 | Postman testing          | 🔄 In progress |
 | Frontend (separate repo) | ⏳ Not started |
 
