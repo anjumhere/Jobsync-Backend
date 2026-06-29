@@ -3,8 +3,12 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import { User } from '../models/user.model.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import {
+  uploadOnCloudinary,
+  deleteFromCloudinary,
+} from '../utils/cloudinary.js';
 import jwt from 'jsonwebtoken';
+
 const generateAccessRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -24,6 +28,7 @@ const generateAccessRefreshToken = async (userId) => {
     );
   }
 };
+
 const registerUser = asyncHandler(async (req, res) => {
   const { fullName, email, password } = req.body;
   if (
@@ -69,6 +74,7 @@ const registerUser = asyncHandler(async (req, res) => {
     .status(201)
     .json(new ApiResponse(200, createdUser, 'User registered Successfully'));
 });
+
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -79,6 +85,7 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
+
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) {
     throw new ApiError(401, 'Password wrong');
@@ -87,14 +94,10 @@ const loginUser = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken } = await generateAccessRefreshToken(
     user._id,
   );
-
   const loggedInUser = await User.findById(user._id).select(
     '-password -refreshToken',
   );
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
+  const options = { httpOnly: true, secure: true };
 
   return res
     .status(200)
@@ -103,37 +106,26 @@ const loginUser = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        {
-          user: loggedInUser,
-          refreshToken,
-          accessToken,
-        },
+        { user: loggedInUser, refreshToken, accessToken },
         'User loggedin Successfully',
       ),
     );
 });
+
 const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
-    {
-      $unset: {
-        refreshToken: 1,
-      },
-    },
-    {
-      new: true,
-    },
+    { $unset: { refreshToken: 1 } },
+    { new: true },
   );
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
+  const options = { httpOnly: true, secure: true };
   return res
     .status(200)
     .clearCookie('refreshToken', options)
     .clearCookie('accessToken', options)
     .json(new ApiResponse(200, {}, 'User loggedOut Successfully'));
 });
+
 const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
     const incomingRefreshToken =
@@ -141,11 +133,11 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     if (!incomingRefreshToken) {
       throw new ApiError(401, 'Unauthorized request');
     }
+
     const decodedToken = jwt.verify(
       incomingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET,
     );
-
     const user = await User.findById(decodedToken._id);
     if (!user) {
       throw new ApiError(404, 'User not found');
@@ -156,11 +148,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const { accessToken, refreshToken: newRefreshToken } =
       await generateAccessRefreshToken(user._id);
+    const options = { httpOnly: true, secure: true };
 
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
     return res
       .status(200)
       .cookie('refreshToken', newRefreshToken, options)
@@ -168,10 +157,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       .json(
         new ApiResponse(
           200,
-          {
-            accessToken,
-            refreshToken: newRefreshToken,
-          },
+          { accessToken, refreshToken: newRefreshToken },
           'AccessToken refreshed',
         ),
       );
@@ -179,11 +165,13 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     throw new ApiError(400, error?.message || 'Invalid refresh token');
   }
 });
+
 const changePassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   if (!oldPassword || !newPassword) {
     throw new ApiError(400, 'Both fields are required');
   }
+
   const user = await User.findById(req.user._id);
   if (!user) {
     throw new ApiError(404, 'User not found');
@@ -197,6 +185,7 @@ const changePassword = asyncHandler(async (req, res) => {
   if (oldPassword === newPassword) {
     throw new ApiError(400, 'New password cannot be same as old password');
   }
+
   const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
   if (!passwordRegex.test(newPassword)) {
     throw new ApiError(
@@ -211,14 +200,16 @@ const changePassword = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, {}, 'Password changed successfully'));
 });
+
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, req.user, 'Current User Fetched Successfully'));
 });
+
 const updateAccountDetails = asyncHandler(async (req, res) => {
   const { fullName, bio, headline } = req.body;
-  if (!fullName && headline === undefined && bio === undefined) {
+  if (!fullName && !bio && !headline) {
     throw new ApiError(400, 'At least one field is required');
   }
 
@@ -226,27 +217,29 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   if (fullName?.trim()) updateFields.fullName = fullName.trim();
   if (bio?.trim()) updateFields.bio = bio.trim();
   if (headline?.trim()) updateFields.headline = headline.trim();
+
+  if (!Object.keys(updateFields).length) {
+    throw new ApiError(400, 'At least one field is required');
+  }
+
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      $set: updateFields,
-    },
-    {
-      new: true,
-      runValidators: true,
-    },
+    { $set: updateFields },
+    { new: true, runValidators: true },
   ).select('-password -refreshToken');
+
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
+
   return res
     .status(200)
     .json(new ApiResponse(200, user, 'Account details changed successfully'));
 });
+
 const changeUserAvatar = asyncHandler(async (req, res) => {
   const avatarLocalPath = req.file?.path;
   if (!avatarLocalPath) {
-    console.log('no avatar');
     throw new ApiError(400, 'Avatar image is required');
   }
 
@@ -255,22 +248,21 @@ const changeUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Avatar upload failed');
   }
 
+  if (req.user.avatar) {
+    await deleteFromCloudinary(req.user.avatar);
+  }
+
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      $set: {
-        avatar: avatar.url,
-      },
-    },
-    {
-      new: true,
-    },
+    { $set: { avatar: avatar.url } },
+    { new: true },
   ).select('-password -refreshToken');
 
   return res
     .status(200)
     .json(new ApiResponse(200, user, 'Avatar changed successfully'));
 });
+
 const changeUserCoverImage = asyncHandler(async (req, res) => {
   const coverImageLocalPath = req.file?.path;
   if (!coverImageLocalPath) {
@@ -282,16 +274,14 @@ const changeUserCoverImage = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Cover image upload failed');
   }
 
+  if (req.user.coverImage) {
+    await deleteFromCloudinary(req.user.coverImage);
+  }
+
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      $set: {
-        coverImage: coverImage.url,
-      },
-    },
-    {
-      new: true,
-    },
+    { $set: { coverImage: coverImage.url } },
+    { new: true },
   ).select('-password -refreshToken');
 
   return res
@@ -308,48 +298,48 @@ const updateResume = asyncHandler(async (req, res) => {
   if (req.file.mimetype !== 'application/pdf') {
     throw new ApiError(400, 'Only PDF files are allowed');
   }
+
   const resume = await uploadOnCloudinary(resumeLocalPath);
   if (!resume.url) {
     throw new ApiError(500, 'Resume upload failed');
   }
+
+  if (req.user.resume) {
+    await deleteFromCloudinary(req.user.resume);
+  }
+
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      $set: {
-        resume: resume.url,
-      },
-    },
-    {
-      new: true,
-    },
+    { $set: { resume: resume.url } },
+    { new: true },
   ).select('-password -refreshToken');
+
   return res
     .status(200)
     .json(new ApiResponse(200, user, 'Resume uploaded successfully'));
 });
+
 const updateSkill = asyncHandler(async (req, res) => {
   const { skill } = req.body;
   if (!skill || skill.trim() === '') {
     throw new ApiError(400, 'Skill is required');
   }
+
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      $addToSet: {
-        skills: skill.trim(),
-      },
-    },
-    {
-      new: true,
-    },
+    { $addToSet: { skills: skill.trim() } },
+    { new: true },
   ).select('-password -refreshToken');
+
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
+
   return res
     .status(200)
     .json(new ApiResponse(200, user, 'Skill added successfully'));
 });
+
 const removeSkill = asyncHandler(async (req, res) => {
   const { skill } = req.params;
   if (!skill || skill.trim() === '') {
@@ -358,14 +348,8 @@ const removeSkill = asyncHandler(async (req, res) => {
 
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      $pull: {
-        skills: skill.trim(),
-      },
-    },
-    {
-      new: true,
-    },
+    { $pull: { skills: skill.trim() } },
+    { new: true },
   ).select('-password -refreshToken');
 
   return res
@@ -378,20 +362,17 @@ const bookMarkJob = asyncHandler(async (req, res) => {
   if (!jobId || jobId.trim() === '') {
     throw new ApiError(400, 'Job ID is required');
   }
+
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      $addToSet: {
-        savedJobs: jobId,
-      },
-    },
-    {
-      new: true,
-    },
+    { $addToSet: { savedJobs: jobId } },
+    { new: true },
   ).select('-password -refreshToken');
+
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
+
   return res
     .status(200)
     .json(new ApiResponse(200, user, 'Job bookmarked successfully'));
@@ -402,28 +383,27 @@ const removeBookmarkedJob = asyncHandler(async (req, res) => {
   if (!jobId || jobId.trim() === '') {
     throw new ApiError(400, 'Bookmarked job ID is required');
   }
+
   const user = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      $pull: {
-        savedJobs: jobId,
-      },
-    },
-    {
-      new: true,
-    },
+    { $pull: { savedJobs: jobId } },
+    { new: true },
   ).select('-password -refreshToken');
+
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
+
   return res
     .status(200)
     .json(new ApiResponse(200, user, 'Bookmarked job deleted successfully'));
 });
+
 const getSavedJobs = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id)
     .populate('savedJobs')
     .select('-password -refreshToken');
+
   if (!user) {
     throw new ApiError(404, 'User not found');
   }
@@ -434,6 +414,7 @@ const getSavedJobs = asyncHandler(async (req, res) => {
       new ApiResponse(200, user.savedJobs, 'Saved jobs fetched successfully'),
     );
 });
+
 export {
   registerUser,
   loginUser,

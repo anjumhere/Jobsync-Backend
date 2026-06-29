@@ -49,6 +49,7 @@ router
 router.route('/resume').patch(verifyJWT, upload.single('resume'), updateResume);
 router.route('/skills').post(verifyJWT, updateSkill);
 router.route('/skills/:skill').delete(verifyJWT, removeSkill);
+router.route('/skills/').delete(verifyJWT, removeSkill);
 router.route('/saved-jobs/:jobId').post(verifyJWT, bookMarkJob);
 router.route('/saved-jobs/:jobId').delete(verifyJWT, removeBookmarkedJob);
 router.route('/saved-jobs').get(verifyJWT, getSavedJobs);

@@ -107,11 +107,11 @@ const updateMyCompany = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const updateFields = {};
-  if (name) updateFields.name = name.trim();
-  if (description) updateFields.description = description.trim();
-  if (website) updateFields.website = website.trim();
-  if (industry) updateFields.industry = industry.trim();
-  if (location) updateFields.location = location.trim();
+  if (name?.trim()) updateFields.name = name.trim();
+  if (description?.trim()) updateFields.description = description.trim();
+  if (website?.trim()) updateFields.website = website.trim();
+  if (industry?.trim()) updateFields.industry = industry.trim();
+  if (location?.trim()) updateFields.location = location.trim();
 
   if (!Object.keys(updateFields).length) {
     throw new ApiError(400, 'At least one field is required to update');
@@ -146,7 +146,7 @@ const updateCompanyLogo = asyncHandler(async (req, res) => {
     if (!company) throw new ApiError(404, 'Company not found');
 
     if (company.owner.toString() !== req.user._id.toString()) {
-      throw new ApiError(403, 'Unauthorized');
+      throw new ApiError(403, 'Unauthorized, you cannot perform this action');
     }
 
     const logo = await uploadOnCloudinary(logoLocalfilePath);
@@ -178,7 +178,7 @@ const deleteCompany = asyncHandler(async (req, res) => {
   if (!company) throw new ApiError(404, 'Company not found');
 
   if (company.owner.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, 'Unauthorized');
+    throw new ApiError(403, 'Unauthorized, you cannot perform this action');
   }
 
   const activeJobs = await Job.countDocuments({ company: id });
