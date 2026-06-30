@@ -83,7 +83,9 @@ const getAllJobs = asyncHandler(async (req, res) => {
   if (location) {
     filter.location = { $regex: location, $options: 'i' };
   }
-
+  if (jobType) {
+    filter.jobType = jobType;
+  }
   if (salaryMin) {
     filter.salaryMin = { $gte: Number(salaryMin) };
   }
