@@ -242,5 +242,6 @@ Base URL: `/api/v1`
 
 ## Author
 
-**Anjum** — Self-taught full-stack developer based in Rawalpindi, Pakistan.
+**Anjum**
+
 GitHub: [@anjumhere](https://github.com/anjumhere)
