@@ -58,18 +58,31 @@ const registerUser = asyncHandler(async (req, res) => {
   const avatar = await uploadOnCloudinary(avatarLocalPath);
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-  const user = await User.create({
-    fullName,
-    email,
-    password,
-    avatar: avatar?.url || '',
-    coverImage: coverImage?.url || '',
-  });
+  let user;
+  try {
+    user = await User.create({
+      fullName,
+      email,
+      password,
+      avatar: avatar?.url || '',
+      coverImage: coverImage?.url || '',
+    });
+  } catch (error) {
+    // Roll back any uploaded images so we don't leave orphaned files on Cloudinary
+    if (avatar?.url) await deleteFromCloudinary(avatar.url);
+    if (coverImage?.url) await deleteFromCloudinary(coverImage.url);
+    throw new ApiError(
+      500,
+      'Something went wrong while creating your account. Please try again.',
+    );
+  }
 
   const createdUser = await User.findById(user._id).select(
     '-password -refreshToken',
   );
   if (!createdUser) {
+    if (avatar?.url) await deleteFromCloudinary(avatar.url);
+    if (coverImage?.url) await deleteFromCloudinary(coverImage.url);
     throw new ApiError(
       500,
       'Something went wrong while creating your account. Please try again.',
